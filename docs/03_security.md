@@ -1,4 +1,4 @@
-# 03 セキュリティ設計（2026-10-13・案）
+# 03 セキュリティ設計（2026-10-13・案、2026-10-15 一次情報で見直し → `08_publish_gate.md`）
 
 守るものは2つ。**遊ぶ人**と、**毎日AIが改修する仕組み（運営）**。
 
@@ -9,7 +9,7 @@
 | 静的サイトのみ | サーバーの処理なし。GitHub Pages で配信する |
 | 個人情報を扱わない | ログイン・入力フォーム・Cookie・広告・アクセス解析なし |
 | セーブは端末の中だけ | localStorage にゲームの進行データだけを保存する（名前などは保存しない） |
-| 外部との通信を禁止 | CSP（`<meta http-equiv="Content-Security-Policy">`）で `default-src 'self'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'` を基本にする |
+| 外部との通信を禁止 | CSP（`<meta http-equiv="Content-Security-Policy">`）で `default-src 'self'; script-src 'self'; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests` |
 | 外部ファイルを読まない | ライブラリ・フォント・画像はすべてリポジトリ内に置く（CDNは使わない） |
 | 共有はリンクだけ | Xへの共有は投稿画面を開くリンク（Web Intent）だけ。中身は結果の文字列のみ |
 | 体への配慮 | 揺れ・点滅を設定でオフにできる。強い点滅は使わない |

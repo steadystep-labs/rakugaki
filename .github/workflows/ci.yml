@@ -1,0 +1,30 @@
+# 自動テスト（push と pull request のたびに実行）
+# セキュリティ方針（GitHub公式「Security hardening for GitHub Actions」に準拠）：
+# - トークンの権限は読み取りだけ（permissions: contents: read）
+# - 外部のアクションは、書き換えられないようにコミットSHAで固定する
+# - pull_request_target は使わない（外部からのPRに書き込み権限を渡さないため）
+# - シークレットは使わない
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: node tools/check.mjs
+      - run: node tests/sim.test.mjs
+      - run: node tests/smoke.mjs
+      - run: node tests/balance.mjs --runs 20

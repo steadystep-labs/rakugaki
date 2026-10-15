@@ -1,6 +1,7 @@
 // セキュリティの自動チェック（docs/03_security.md の禁止事項を機械的に見る）
 // 見つかったら終了コード1で失敗する。vendor/（Phaser本体）は対象外。
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
@@ -48,10 +49,34 @@ const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
 const csp = html.match(/http-equiv="Content-Security-Policy"\s+content="([^"]+)"/);
 if (!csp) problems.push('index.html: CSPの<meta>がない');
 else {
-  for (const need of ["default-src 'self'", "script-src 'self'", "connect-src 'none'", "object-src 'none'", "base-uri 'none'", "form-action 'none'"]) {
+  for (const need of ["default-src 'self'", "script-src 'self'", "connect-src 'none'", "object-src 'none'", "frame-src 'none'", "worker-src 'none'", "base-uri 'none'", "form-action 'none'", 'upgrade-insecure-requests']) {
     if (!csp[1].includes(need)) problems.push(`index.html: CSPに ${need} がない`);
   }
 }
+
+// 同梱ライブラリが書き換えられていないか（npm の phaser@4.2.1 と同じ中身か）
+const PHASER_SHA256 = 'f4c5fd140d118c10fa9090641a03c17303bab9bfdc28e0626296777db1bb1bde';
+const vendor = join(ROOT, 'vendor', 'phaser.esm.min.js');
+if (!existsSync(vendor)) problems.push('vendor/phaser.esm.min.js がない');
+else if (createHash('sha256').update(readFileSync(vendor)).digest('hex') !== PHASER_SHA256) problems.push('vendor/phaser.esm.min.js の中身が記録と違う（改ざん・入れ替えの疑い）');
+
+// GitHub Actions のワークフロー（GitHub公式のセキュリティ強化ガイドに準拠しているか）
+const wfDir = join(ROOT, '.github', 'workflows');
+if (existsSync(wfDir)) {
+  for (const name of readdirSync(wfDir)) {
+    const p = join(wfDir, name);
+    const y = readFileSync(p, 'utf8');
+    if (/^\s*pull_request_target\s*:/m.test(y)) problems.push(`${p}: pull_request_target は使わない`);
+    if (!/permissions:\s*\n\s*contents:\s*read/.test(y)) problems.push(`${p}: permissions を contents: read にする`);
+    if (/\$\{\{\s*secrets\./.test(y)) problems.push(`${p}: シークレットを使わない`);
+    for (const m of y.matchAll(/uses:\s*([^\s#]+)/g)) {
+      if (!/@[0-9a-f]{40}$/.test(m[1])) problems.push(`${p}: ${m[1]} をコミットSHAで固定する`);
+    }
+  }
+}
+
+// 公開してはいけないファイルが紛れていないか
+if (existsSync(join(ROOT, '.env'))) problems.push('.env がリポジトリの中にある');
 
 if (problems.length) {
   console.log('SECURITY CHECK NG');
