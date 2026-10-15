@@ -3,7 +3,7 @@
 const X_INTENT = 'https://x.com/intent/post';
 
 // ゲームのXアカウント（作成後に入れる。例：'rakugaki_yusha'）。入れると、感想や要望の投稿がこのアカウント宛てになる
-export const X_HANDLE = '';
+export const X_HANDLE = 'rakugaki_yusha';
 
 // クリアした人に「このあと、どうなってほしい？」を聞く選択肢（答えはプレイヤー自身がXに投稿する。ゲームは何も集めない）
 export const AFTER_CLEAR_CHOICES = [
