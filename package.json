@@ -1,0 +1,19 @@
+{
+  "name": "endless-game",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "vendor": "node tools/vendor.mjs",
+    "check": "node tools/check.mjs",
+    "smoke": "node tests/smoke.mjs",
+    "balance": "node tests/balance.mjs",
+    "test": "node tools/check.mjs && node tests/sim.test.mjs && node tests/smoke.mjs && node tests/balance.mjs"
+  },
+  "dependencies": {
+    "phaser": "4.2.1"
+  },
+  "devDependencies": {
+    "playwright": "1.64.0"
+  }
+}

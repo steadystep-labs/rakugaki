@@ -1,0 +1,61 @@
+{
+  "runs": 20,
+  "results": {
+    "idle": {
+      "medianTime": 14,
+      "clearRate": 0,
+      "medianLevel": 3,
+      "medianFirstLevelUp": 6.3,
+      "medianKills": 18.5,
+      "medianInk": 1
+    },
+    "random": {
+      "medianTime": 44.6,
+      "clearRate": 0,
+      "medianLevel": 6,
+      "medianFirstLevelUp": 6,
+      "medianKills": 76,
+      "medianInk": 4.5
+    },
+    "flee": {
+      "medianTime": 339.3,
+      "clearRate": 85,
+      "medianLevel": 23.5,
+      "medianFirstLevelUp": 4.1,
+      "medianKills": 1003,
+      "medianInk": 91
+    },
+    "flee+meta": {
+      "medianTime": 316.2,
+      "clearRate": 100,
+      "medianLevel": 35,
+      "medianFirstLevelUp": 3.4,
+      "medianKills": 2301.5,
+      "medianInk": 175.5
+    },
+    "clumsy": {
+      "medianTime": 272.1,
+      "clearRate": 25,
+      "medianLevel": 19.5,
+      "medianFirstLevelUp": 5,
+      "medianKills": 734,
+      "medianInk": 29
+    },
+    "clumsy+mid": {
+      "medianTime": 318.6,
+      "clearRate": 75,
+      "medianLevel": 27,
+      "medianFirstLevelUp": 4.3,
+      "medianKills": 1313.5,
+      "medianInk": 105
+    },
+    "clumsy+meta": {
+      "medianTime": 313.4,
+      "clearRate": 100,
+      "medianLevel": 34.5,
+      "medianFirstLevelUp": 3.9,
+      "medianKills": 2171.5,
+      "medianInk": 157.5
+    }
+  }
+}

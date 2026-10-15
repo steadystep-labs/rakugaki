@@ -1,0 +1,25 @@
+<title>らくがき勇者</title>
+<style>
+  /* 1つの世界観（方眼ノート）で固定するゲームなので、テーマは切り替えない */
+  :root { --desk: #dfe6ef; --paper: #fdfeff; color-scheme: light; }
+  @font-face {
+    font-family: 'Rakugaki';
+    src: url('assets/fonts/rakugaki.woff') format('woff');
+    font-display: swap;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--desk);
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #game { width: 100%; height: 100%; }
+  canvas { display: block; }
+</style>
+<div id="game"></div>
+<script type="module" src="src/main.js"></script>
