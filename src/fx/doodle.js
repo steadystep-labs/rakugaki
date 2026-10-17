@@ -253,6 +253,7 @@ export function generateDoodles(scene) {
       g.destroy();
     }
   }
+  buildAtlas(scene);
   // 方眼ノートの1マス（タイル用）
   const g = scene.make.graphics({ x: 0, y: 0 }, false);
   g.fillStyle(PALETTE.paper, 1);
@@ -265,6 +266,33 @@ export function generateDoodles(scene) {
   g.lineBetween(24.5, 0, 24.5, 48);
   g.generateTexture('grid', 48, 48);
   g.destroy();
+}
+
+// ゲーム画面用に、すべての落書きを1枚の大きな画像（'doodles'）にまとめる。
+// 絵ごとに別の画像だと、描画のたびに切り替えが起きて重くなるため（2026-10-16）。フレーム名は '<名前>_<0〜2>'
+export const ATLAS = 'doodles';
+function buildAtlas(scene) {
+  const items = [];
+  for (const name of Object.keys(DRAWERS)) for (let f = 0; f < BOIL_FRAMES; f++) items.push({ key: `${name}_${f}`, size: SIZES[name] });
+  items.sort((a, b) => b.size - a.size);
+  const PAD = 2, W = 1024;
+  let x = 0, y = 0, rowH = 0;
+  for (const it of items) {
+    if (x + it.size + PAD > W) { x = 0; y += rowH + PAD; rowH = 0; }
+    it.x = x; it.y = y; x += it.size + PAD; rowH = Math.max(rowH, it.size);
+  }
+  const H = Math.pow(2, Math.ceil(Math.log2(y + rowH + PAD)));
+  const atlas = scene.textures.createCanvas(ATLAS, W, H);
+  const c = atlas.getContext();
+  for (const it of items) {
+    c.drawImage(scene.textures.get(it.key).getSourceImage(), it.x, it.y);
+    atlas.add(it.key, 0, it.x, it.y, it.size, it.size);
+  }
+  // 白い点（バーなどを画像で描くため）
+  c.fillStyle = '#ffffff';
+  c.fillRect(W - 8, H - 8, 8, 8);
+  atlas.add('px', 0, W - 6, H - 6, 4, 4);
+  atlas.refresh();
 }
 
 // 手描き風の四角（ボタンや枠に使う）

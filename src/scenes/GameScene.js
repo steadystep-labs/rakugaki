@@ -8,7 +8,7 @@ import { app, persist, anomalyName } from '../state.js';
 import { recordRun } from '../core/save.js';
 import { formatTime } from '../core/share.js';
 import { sfx, unlockAudio } from '../fx/audio.js';
-import { wobblyRect } from '../fx/doodle.js';
+import { wobblyRect, ATLAS } from '../fx/doodle.js';
 import { label, button, fadeTo, pin, W, H } from '../ui/ui.js';
 
 const DAY_COLOR = COLORS.blue.hex;
@@ -39,6 +39,9 @@ export class GameScene extends Phaser.Scene {
     this.testInput = { x: 0, y: 0 };
     this.joy = { id: null, ox: 0, oy: 0, x: 0, y: 0 };
     this.settings = app.save.settings;
+    // 前の回の状態を残さない（Phaserは同じ画面を使い回すため。残っていると、群れの予告の矢印が次の回にも出ていた）
+    this.gapWarn = null; this.bannerText = null; this.edge = null; this.dark = null; this.howTo = null;
+    this.swingDrawn = false; this.levelUpLayer = null; this.pauseLayer = null; this.cards = [];
 
     const cam = this.cameras.main;
     cam.setBackgroundColor(PALETTE.paper);
@@ -49,8 +52,9 @@ export class GameScene extends Phaser.Scene {
     this.grid = this.add.tileSprite(W / 2, H / 2, W + 64, H + 64, 'grid').setScrollFactor(0).setDepth(-10);
 
     // 世界の中のもの
-    this.hero = this.add.image(0, 0, 'hero_0').setDepth(50);
-    this.heroBar = this.add.graphics().setDepth(52);
+    this.hero = this.add.image(0, 0, ATLAS, 'hero_0').setDepth(50);
+    // HPバーは画像で描く（Graphics は毎フレーム描き直しになって重いため）
+    this.heroBar = this.makeBar(64, 9, 52, false);
     this.swingGfx = this.add.graphics().setDepth(56);
     this.pools = { enemy: [], proj: [], drop: [], trail: [], hazard: [], needle: [], part: [] };
     this.live = { enemy: new Map(), proj: new Map(), drop: new Map() };
@@ -82,8 +86,8 @@ export class GameScene extends Phaser.Scene {
     const sub = label(this, 0, 92, 'こうげきは じどう。しずくを ひろって つよくなろう', 24, { color: '#5A5F69' });
     c.add([t, sub]);
     if (touch) {
-      const ring = this.add.image(0, -120, 'joyRing_0').setScale(0.55).setAlpha(0.5);
-      const knob = this.add.image(-24, -120, 'joyKnob_0').setScale(0.6).setAlpha(0.85);
+      const ring = this.add.image(0, -120, ATLAS, 'joyRing_0').setScale(0.55).setAlpha(0.5);
+      const knob = this.add.image(-24, -120, ATLAS, 'joyKnob_0').setScale(0.6).setAlpha(0.85);
       c.add([ring, knob]);
       this.tweens.add({ targets: knob, x: 24, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     }
@@ -100,8 +104,8 @@ export class GameScene extends Phaser.Scene {
 
   // ---------- 入力 ----------
   makeJoystick() {
-    this.joyRing = this.add.image(0, 0, 'joyRing_0').setScrollFactor(0).setDepth(90).setVisible(false).setAlpha(0.6);
-    this.joyKnob = this.add.image(0, 0, 'joyKnob_0').setScrollFactor(0).setDepth(91).setVisible(false).setAlpha(0.8);
+    this.joyRing = this.add.image(0, 0, ATLAS, 'joyRing_0').setScrollFactor(0).setDepth(90).setVisible(false).setAlpha(0.6);
+    this.joyKnob = this.add.image(0, 0, ATLAS, 'joyKnob_0').setScrollFactor(0).setDepth(91).setVisible(false).setAlpha(0.8);
   }
 
   bindInput() {
@@ -189,13 +193,42 @@ export class GameScene extends Phaser.Scene {
     if ((this.s.status === 'dead' || this.s.status === 'clear') && !this.ended) this.onEnd();
   }
 
-  tex(key) { return `${key}_${this.boilFrame}`; }
+  // 絵を貼る（まとめた1枚の画像から。変わったときだけ貼り直す）
+  art(img, name) { return this.frame(img, `${name}_${this.boilFrame}`); }
+  frame(img, f) { if (img._frame !== f) { img.setTexture(ATLAS, f); img._frame = f; } return img; }
+  // 色を変える（変わったときだけ）
+  tintAs(img, state) {
+    if (img._tint === state) return;
+    img._tint = state;
+    if (state === 'none') img.setTintMode(Phaser.TintModes.MULTIPLY).setTint(0xffffff);
+    else if (state === 'hit') img.setTintMode(Phaser.TintModes.FILL).setTint(DAY_COLOR);
+    else if (state === 'bossHit') img.setTintMode(Phaser.TintModes.MULTIPLY).setTint(0xa9c3f5);
+    else if (state === 'warn') img.setTintMode(Phaser.TintModes.FILL).setTint(PALETTE.danger);
+    else if (state === 'slow') img.setTintMode(Phaser.TintModes.MULTIPLY).setTint(0xb9cdf5);
+  }
+
+  // 白い点の画像を伸ばしてバーを作る（枠・地・中身の3枚）
+  makeBar(w, h, depth, fixed) {
+    const mk = (color) => { const i = this.add.image(0, 0, ATLAS, 'px').setOrigin(0, 0.5).setDepth(depth).setTint(color); if (fixed) i.setScrollFactor(0); return i; };
+    const bar = { w, h, frame: mk(PALETTE.ink), bg: mk(PALETTE.white), fill: mk(DAY_COLOR) };
+    bar.frame.setDisplaySize(w + 6, h + 6);
+    bar.bg.setDisplaySize(w, h);
+    return bar;
+  }
+  setBar(bar, x, y, rate, color = DAY_COLOR, visible = true) {
+    for (const k of ['frame', 'bg', 'fill']) bar[k].setVisible(visible);
+    if (!visible) return;
+    bar.frame.setPosition(x - 3, y);
+    bar.bg.setPosition(x, y);
+    bar.fill.setPosition(x, y).setDisplaySize(Math.max(0.01, bar.w * Math.max(0, Math.min(1, rate))), bar.h);
+    if (bar.fill._c !== color) { bar.fill.setTint(color); bar.fill._c = color; }
+  }
 
   take(poolName, depth) {
-    const img = this.pools[poolName].pop() || this.add.image(0, 0, 'xp_0');
+    const img = this.pools[poolName].pop() || this.add.image(0, 0, ATLAS, 'xp_0');
     img.setVisible(true).setActive(true).setAlpha(1).setScale(1).setRotation(0).setDepth(depth).setFlipX(false);
-    img.clearTint();
-    img.setTintMode(Phaser.TintModes.MULTIPLY);
+    img._tint = null;
+    this.tintAs(img, 'none');
     return img;
   }
   give(poolName, img) { img.setVisible(false).setActive(false); this.pools[poolName].push(img); }
@@ -204,19 +237,14 @@ export class GameScene extends Phaser.Scene {
     const s = this.s, h = s.hero, now = this.time.now;
     // 勇者
     const moving = Math.hypot(h.vx, h.vy) > 30;
-    this.hero.setTexture(this.tex('hero')).setPosition(h.x, h.y);
+    this.art(this.hero, 'hero').setPosition(h.x, h.y);
     this.hero.setFlipX(h.fx < -0.1);
     const bob = moving ? Math.sin(now * 0.018) * 0.06 : Math.sin(now * 0.004) * 0.02;
     this.hero.setScale(VIS * (1 - bob * 0.5), VIS * (1 + bob));
     this.hero.setAlpha(h.iframes > 0 && Math.floor(now / 70) % 2 === 0 ? 0.35 : 1);
     // 勇者のHPバー
-    const g = this.heroBar;
-    g.clear();
-    const bw = 64, rate = Math.max(0, h.hp / h.maxHp);
-    const by = h.y + 40;
-    g.fillStyle(PALETTE.white, 1); g.fillRect(h.x - bw / 2, by, bw, 9);
-    g.fillStyle(rate < 0.3 ? PALETTE.danger : DAY_COLOR, 1); g.fillRect(h.x - bw / 2, by, bw * rate, 9);
-    g.lineStyle(3, PALETTE.ink, 1); g.strokeRect(h.x - bw / 2, by, bw, 9);
+    const rate = Math.max(0, h.hp / h.maxHp);
+    this.setBar(this.heroBar, h.x - 32, h.y + 44, rate, rate < 0.3 ? PALETTE.danger : DAY_COLOR);
 
     // 敵
     const seen = new Set();
@@ -224,7 +252,7 @@ export class GameScene extends Phaser.Scene {
       seen.add(e.id);
       let img = this.live.enemy.get(e.id);
       if (!img) { img = this.take('enemy', e.type === 'boss' ? 45 : 40); img.enemyType = e.type; this.live.enemy.set(e.id, img); }
-      img.setTexture(this.tex(e.type)).setPosition(e.x, e.y);
+      this.art(img, e.type).setPosition(e.x, e.y);
       const base = ENEMIES[e.type].radius;
       let sc = e.r / base;
       if (e.type === 'runner') img.setRotation(Math.atan2(h.y - e.y, h.x - e.x));
@@ -233,11 +261,9 @@ export class GameScene extends Phaser.Scene {
         if (e.phase === 'telegraph') sc *= 1 + Math.sin(now * 0.05) * 0.06;
       } else img.setRotation(Math.sin(now * 0.006 + e.wobble) * 0.18);
       img.setScale(sc * VIS);
-      if (e.flash > 0 && e.type === 'boss') img.setTintMode(Phaser.TintModes.MULTIPLY).setTint(0xa9c3f5);
-      else if (e.flash > 0) img.setTintMode(Phaser.TintModes.FILL).setTint(DAY_COLOR);
-      else if (e.type === 'boss' && e.phase === 'telegraph' && Math.floor(now / 90) % 2 === 0) img.setTintMode(Phaser.TintModes.FILL).setTint(PALETTE.danger);
-      else img.setTintMode(Phaser.TintModes.MULTIPLY).setTint(0xffffff);
-      if (e.slowT > 0 && e.flash <= 0) img.setTint(0xb9cdf5);
+      this.tintAs(img, e.flash > 0 ? (e.type === 'boss' ? 'bossHit' : 'hit')
+        : e.type === 'boss' && e.phase === 'telegraph' && Math.floor(now / 90) % 2 === 0 ? 'warn'
+          : e.slowT > 0 ? 'slow' : 'none');
     }
     for (const [id, img] of this.live.enemy) if (!seen.has(id)) { this.give('enemy', img); this.live.enemy.delete(id); }
 
@@ -251,7 +277,7 @@ export class GameScene extends Phaser.Scene {
         img.projKey = p.team === 'enemy' ? 'enemyShot' : p.weapon === 'plane' ? 'plane' : 'pencilShot';
         this.live.proj.set(p.id, img);
       }
-      img.setTexture(this.tex(img.projKey)).setPosition(p.x, p.y).setRotation(Math.atan2(p.vy, p.vx)).setScale(VIS);
+      this.art(img, img.projKey).setPosition(p.x, p.y).setRotation(Math.atan2(p.vy, p.vx)).setScale(VIS);
     }
     for (const [id, img] of this.live.proj) if (!seen.has(id)) { this.give('proj', img); this.live.proj.delete(id); }
 
@@ -261,28 +287,30 @@ export class GameScene extends Phaser.Scene {
       seen.add(d.id);
       let img = this.live.drop.get(d.id);
       if (!img) { img = this.take('drop', 30); this.live.drop.set(d.id, img); }
-      img.setTexture(this.tex(d.kind === 'xp' ? 'xp' : d.kind === 'heal' ? 'heart' : 'ink')).setPosition(d.x, d.y + Math.sin(now * 0.006 + d.id) * 3);
+      this.art(img, d.kind === 'xp' ? 'xp' : d.kind === 'heal' ? 'heart' : 'ink').setPosition(d.x, d.y + Math.sin(now * 0.006 + d.id) * 3);
       img.setScale(VIS * (d.kind === 'xp' ? 1 + Math.min(d.value, 20) * 0.04 : d.kind === 'heal' ? 0.8 + Math.sin(now * 0.01) * 0.08 : 1));
     }
     for (const [id, img] of this.live.drop) if (!seen.has(id)) { this.give('drop', img); this.live.drop.delete(id); }
 
     // クレヨンの線
     this.syncList(this.trailImgs, s.trails, 'trail', 10, (img, t) => {
-      img.setTexture(this.tex('crayon')).setPosition(t.x, t.y).setScale(t.width / 18).setAlpha(Math.min(1, (t.life / t.maxLife) * 1.6));
+      this.art(img, 'crayon').setPosition(t.x, t.y).setScale(t.width / 18).setAlpha(Math.min(1, (t.life / t.maxLife) * 1.6));
     });
     // ボスのこすった跡
     this.syncList(this.hazardImgs, s.hazards, 'hazard', 12, (img, z) => {
-      img.setTexture(this.tex('smudge')).setPosition(z.x, z.y).setScale(z.r / 42).setAlpha(Math.min(0.95, (z.life / z.maxLife) * 1.5));
+      this.art(img, 'smudge').setPosition(z.x, z.y).setScale(z.r / 42).setAlpha(Math.min(0.95, (z.life / z.maxLife) * 1.5));
     });
     // コンパスの針
     const needles = [];
     for (const w of s.weapons) if (w.needles) needles.push(...w.needles);
     this.syncList(this.needleImgs, needles, 'needle', 58, (img, n) => {
-      img.setTexture(this.tex('needle')).setPosition(n.x, n.y).setRotation(n.a + Math.PI / 2).setScale(VIS);
+      this.art(img, 'needle').setPosition(n.x, n.y).setRotation(n.a + Math.PI / 2).setScale(VIS);
     });
     // じょうぎの一振り（＋群れの予告の矢印）
     const sg = this.swingGfx;
-    sg.clear();
+    const needSwing = s.swings.length > 0 || (this.gapWarn && s.t < this.gapWarn.until);
+    if (needSwing || this.swingDrawn) sg.clear();
+    this.swingDrawn = needSwing;
     if (this.gapWarn && s.t < this.gapWarn.until) {
       const a = this.gapWarn.angle, pulse = 0.8 + Math.sin(now * 0.012) * 0.2;
       const x1 = h.x + Math.cos(a) * 60, y1 = h.y + Math.sin(a) * 60;
@@ -387,11 +415,13 @@ export class GameScene extends Phaser.Scene {
     sfx.kill();
     // くしゃっと潰れる
     const img = this.take('part', 41);
-    img.setTexture(this.tex(ev.enemy)).setPosition(ev.x, ev.y).setScale(ev.r / ENEMIES[ev.enemy].radius);
+    this.art(img, ev.enemy).setPosition(ev.x, ev.y).setScale(ev.r / ENEMIES[ev.enemy].radius);
     this.particles.push({ img, vx: 0, vy: 0, life: 150, max: 150, spin: 9, gravity: 0, scaleFrom: img.scaleX, scaleTo: 0.15, fade: false });
     const big = ev.enemy === 'lump' || ev.enemy === 'boss';
-    this.burst(ev.x, ev.y, 'scrap', big ? 10 : 4, { speed: big ? 360 : 260, life: 360, spin: 10, gravity: 500 });
-    this.burst(ev.x, ev.y, 'splash', big ? 5 : 2, { tint: DAY_COLOR, speed: 160, life: 320, scale: 0.8 });
+    // 敵が多いときは、飛び散るかけらを減らす（処理が追いつくように）
+    const crowded = this.s.enemies.length > 140;
+    this.burst(ev.x, ev.y, 'scrap', big ? (crowded ? 6 : 10) : (crowded ? 2 : 4), { speed: big ? 360 : 260, life: 360, spin: 10, gravity: 500 });
+    this.burst(ev.x, ev.y, 'splash', big ? 4 : (crowded ? 1 : 2), { tint: DAY_COLOR, speed: 160, life: 320, scale: 0.8 });
     if (big) { this.shake(90, 0.004); this.hitstop = Math.max(this.hitstop, 30); }
   }
 
@@ -399,8 +429,8 @@ export class GameScene extends Phaser.Scene {
     for (let i = 0; i < n; i++) {
       if (this.particles.length > 320) return;
       const img = this.take('part', 70);
-      img.setTexture(`${key}_${i % 3}`).setPosition(x, y).setScale(scale);
-      if (tint !== null) img.setTint(tint);
+      this.frame(img, `${key}_${i % 3}`).setPosition(x, y).setScale(scale);
+      if (tint !== null) { img.setTint(tint); img._tint = 'custom'; }
       const a = Math.random() * Math.PI * 2, sp = speed * (0.4 + Math.random() * 0.8);
       this.particles.push({ img, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - gravity * 0.25, life, max: life, spin: (Math.random() - 0.5) * spin, gravity, scaleFrom: scale, scaleTo: scale * 0.3, fade: true });
     }
@@ -434,13 +464,24 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: this.edge, alpha: 0, duration: 380 });
   }
 
+  // まっくら：穴のあいた暗い画像を1回だけ作る（以前は巨大な円を毎フレーム描き直していて重かった）
   makeDarkness(radius) {
-    const g = this.add.graphics().setScrollFactor(0).setDepth(85);
-    for (let i = 0; i < 6; i++) {
-      g.lineStyle(3000, 0x1d2230, i === 5 ? 0.93 : 0.14);
-      g.strokeCircle(0, 0, radius + 1500 + i * 14);
+    const key = `darkness_${radius}`;
+    if (!this.textures.exists(key)) {
+      const w = W * 2 + 200, hh = H * 2 + 200;
+      const t = this.textures.createCanvas(key, w, hh);
+      const c = t.getContext();
+      c.fillStyle = 'rgba(29,34,48,0.93)';
+      c.fillRect(0, 0, w, hh);
+      c.globalCompositeOperation = 'destination-out';
+      const gr = c.createRadialGradient(w / 2, hh / 2, radius * 0.82, w / 2, hh / 2, radius);
+      gr.addColorStop(0, 'rgba(0,0,0,1)');
+      gr.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = gr;
+      c.beginPath(); c.arc(w / 2, hh / 2, radius, 0, Math.PI * 2); c.fill();
+      t.refresh();
     }
-    this.dark = g;
+    this.dark = this.add.image(0, 0, key).setScrollFactor(0).setDepth(85);
   }
 
   // お知らせは1つずつ（重なると読めないので、前のものは消す）。幅に収まらなければ縮める。
@@ -460,10 +501,11 @@ export class GameScene extends Phaser.Scene {
     const backing = this.add.graphics().setScrollFactor(0).setDepth(d - 1);
     backing.fillStyle(PALETTE.paper, 0.92);
     backing.fillRect(0, 0, W, this.s.anomaly ? 140 : 112);
-    this.hud = this.add.graphics().setScrollFactor(0).setDepth(d);
+    this.xpBar = this.makeBar(W - 48, 18, d, true);
+    this.bossBar = this.makeBar(W - 160, 16, d, true);
     this.lvText = label(this, 28, 70, 'Lv 1', 34, { originX: 0 }).setScrollFactor(0).setDepth(d);
     this.timeText = label(this, W / 2, 72, '0:00', 46).setScrollFactor(0).setDepth(d);
-    this.inkIcon = this.add.image(W - 220, 72, 'ink_0').setScrollFactor(0).setDepth(d).setScale(0.8);
+    this.inkIcon = this.add.image(W - 220, 72, ATLAS, 'ink_0').setScrollFactor(0).setDepth(d).setScale(0.8);
     this.inkText = label(this, W - 198, 72, '0', 32, { originX: 0 }).setScrollFactor(0).setDepth(d);
     if (this.s.anomaly) label(this, W / 2, 118, `異変：${anomalyName(this.s.anomaly)}`, 24, { color: '#5A5F69' }).setScrollFactor(0).setDepth(d);
     const pause = button(this, W - 62, 72, 84, 70, 'll', () => this.togglePause(), { size: 30, seed: 7 });
@@ -472,22 +514,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   updateHud() {
-    const s = this.s, h = s.hero, g = this.hud;
-    g.clear();
-    const x = 24, y = 18, w = W - 48, bh = 18;
-    g.fillStyle(PALETTE.white, 1); g.fillRect(x, y, w, bh);
-    g.fillStyle(DAY_COLOR, 1); g.fillRect(x, y, w * Math.min(1, h.xp / h.xpNext), bh);
-    g.lineStyle(3, PALETTE.ink, 1); g.strokeRect(x, y, w, bh);
-    this.lvText.setText(`Lv ${h.level}`);
-    this.timeText.setText(formatTime(s.t));
-    this.inkText.setText(`${h.ink}`);
-    if (s.boss && s.boss.hp > 0) {
-      this.bossName.setVisible(true);
-      const bx = 80, by = 186, bw = W - 160;
-      g.fillStyle(PALETTE.white, 1); g.fillRect(bx, by, bw, 16);
-      g.fillStyle(PALETTE.danger, 1); g.fillRect(bx, by, bw * Math.max(0, s.boss.hp / s.boss.maxHp), 16);
-      g.lineStyle(3, PALETTE.ink, 1); g.strokeRect(bx, by, bw, 16);
-    } else this.bossName.setVisible(false);
+    const s = this.s, h = s.hero;
+    this.setBar(this.xpBar, 24, 27, h.xp / h.xpNext);
+    // 文字は変わったときだけ描き直す
+    const set = (t, v) => { if (t._v !== v) { t.setText(v); t._v = v; } };
+    set(this.lvText, `Lv ${h.level}`);
+    set(this.timeText, formatTime(s.t));
+    set(this.inkText, `${h.ink}`);
+    const bossOn = !!(s.boss && s.boss.hp > 0);
+    this.bossName.setVisible(bossOn);
+    this.setBar(this.bossBar, 80, 194, bossOn ? s.boss.hp / s.boss.maxHp : 0, PALETTE.danger, bossOn);
   }
 
   // ---------- レベルアップ ----------
@@ -505,7 +541,7 @@ export class GameScene extends Phaser.Scene {
       const info = this.describe(ch);
       const y = 500 + i * 215;
       const card = button(this, W / 2, y, 620, 188, '', (p) => this.pick(i, p), { fill: 0xfff6c7, seed: 31 + i * 5, fireOnDown: true });
-      card.add(this.add.image(-238, 0, `${info.icon}_0`).setScale(info.iconScale));
+      card.add(this.add.image(-238, 0, ATLAS, `${info.icon}_0`).setScale(info.iconScale));
       card.add(label(this, -170, -42, info.name, 40, { originX: 0 }));
       card.add(label(this, 270, -42, info.tag, 28, { originX: 1, color: info.tag === 'NEW' ? '#2F6FE4' : '#5A5F69' }));
       card.add(label(this, -170, 22, info.desc, 26, { originX: 0, color: '#3B3F47', wrap: 430, align: 'left' }));

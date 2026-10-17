@@ -4,7 +4,7 @@
 
 import { createRng } from './rng.js';
 import { WEAPONS, WEAPON_MAX_LEVEL, WEAPON_SLOTS, STARTING_WEAPON } from '../content/weapons.js';
-import { PASSIVES, PASSIVE_MAX_LEVEL, PASSIVE_SLOTS } from '../content/passives.js';
+import { PASSIVES, PASSIVE_SLOTS, passiveMax } from '../content/passives.js';
 import { ENEMIES, BOSS_TIME, MAX_ENEMIES } from '../content/enemies.js';
 import { ANOMALIES } from '../content/anomalies.js';
 import { applyMeta } from '../content/meta.js';
@@ -20,7 +20,10 @@ const PICKUP_BASE = 120;
 const MAX_DROPS = 260;
 
 export function xpForLevel(level) {
-  return Math.round(1.5 + level * 2 + Math.pow(level, 1.7) * 0.4);
+  // 2026-10-16：終盤にレベルアップが続きすぎた（最後の1分で6〜9回）。中盤（Lv12まで）は今までどおりにして、
+  // Lv13 から必要量が段階的に増えるようにした（中盤まで絞ると「3分半の壁」に戻るため）
+  const base = 1.5 + level * 2 + Math.pow(level, 1.7) * 0.4;
+  return Math.round(base * (level > 12 ? 1 + (level - 12) * 0.15 : 1));
 }
 
 export function createSim({ seed = 1, mode = 'free', anomaly = null, meta = {}, collectEvents = true } = {}) {
@@ -87,7 +90,7 @@ export function createSim({ seed = 1, mode = 'free', anomaly = null, meta = {}, 
   }
 
   // ---------- 敵 ----------
-  function hpScale() { return 1 + s.t / 70; }
+  function hpScale() { return 1 + s.t / 78; }
   function speedScale() { return Math.min(1.25, 1 + s.t * 0.001); }
 
   function spawnEnemy(type, x, y) {
@@ -266,12 +269,13 @@ export function createSim({ seed = 1, mode = 'free', anomaly = null, meta = {}, 
       finish('clear');
       return;
     }
-    // 敵が硬くなるのに合わせて、しずく1粒の価値も上げる（強くなるペースが追いつくように）
-    const xp = def.xp * amods.xpMul * (1 + s.t / 450);
+    // しずくの価値は時間で少し上がるが、3:00 で打ち止め（終盤にどんどん溜まらないように）
+    const xp = def.xp * amods.xpMul * (1 + Math.min(s.t, 180) / 450);
     dropXp(e.x, e.y, xp);
     const inkChance = e.type === 'lump' ? 0.3 : e.type === 'spitter' ? 0.2 : 0.08;
     if (rng.chance(inkChance)) s.drops.push({ id: s.nextId++, kind: 'ink', x: e.x, y: e.y, value: 1, pull: false, pullT: 0 });
-    else if (rng.chance(0.01)) s.drops.push({ id: s.nextId++, kind: 'heal', x: e.x, y: e.y, value: 25, pull: false, pullT: 0 });
+    // 回復は終盤ほど落ちにくい（3:00以降は半分以下）。終盤に回復しつづけて死ななくなっていたため
+    else if (rng.chance(s.t < 180 ? 0.008 : 0.0035)) s.drops.push({ id: s.nextId++, kind: 'heal', x: e.x, y: e.y, value: 18, pull: false, pullT: 0 });
     if (def.splitInto) {
       for (let i = 0; i < def.splitInto.count; i++) {
         const a = rng.range(0, Math.PI * 2);
@@ -285,7 +289,8 @@ export function createSim({ seed = 1, mode = 'free', anomaly = null, meta = {}, 
   // 以前は一番近いしずくに合算していたため、合算先が画面外だと目の前にしずくが出なくなるバグがあった（2026-10-14 修正）
   function dropXp(x, y, value) {
     // 取り逃して貯まった分を、新しいしずくに少しずつ上乗せする
-    if (s.xpBank > 0) { const add = Math.min(s.xpBank, value * 3); value += add; s.xpBank -= add; }
+    // 取り逃した分は半分だけ戻す（全部戻すと、拾わなくても強くなれてしまう）
+    if (s.xpBank > 0) { const add = Math.min(s.xpBank, value * 2); value += add * 0.5; s.xpBank -= add; }
     if (s.drops.length >= MAX_DROPS) {
       let near = null, nearD = 160 * 160;
       for (const d of s.drops) {
@@ -346,7 +351,7 @@ export function createSim({ seed = 1, mode = 'free', anomaly = null, meta = {}, 
     if (s.weapons.length < WEAPON_SLOTS) {
       for (const id of Object.keys(WEAPONS)) if (!s.weapons.find((w) => w.id === id)) cands.push({ kind: 'weapon', id, lv: 1, w: 0.95 });
     }
-    for (const p of s.passives) if (p.lv < PASSIVE_MAX_LEVEL) cands.push({ kind: 'passive', id: p.id, lv: p.lv + 1, w: 0.8 });
+    for (const p of s.passives) if (p.lv < passiveMax(p.id)) cands.push({ kind: 'passive', id: p.id, lv: p.lv + 1, w: 0.8 });
     if (s.passives.length < PASSIVE_SLOTS) {
       for (const id of Object.keys(PASSIVES)) if (!s.passives.find((p) => p.id === id)) cands.push({ kind: 'passive', id, lv: 1, w: 0.7 });
     }
@@ -359,7 +364,7 @@ export function createSim({ seed = 1, mode = 'free', anomaly = null, meta = {}, 
       idx = Math.min(idx, cands.length - 1);
       out.push(cands.splice(idx, 1)[0]);
     }
-    if (out.length < 3) out.push({ kind: 'heal', amount: 35 });
+    if (out.length < 3) out.push({ kind: 'heal', amount: 15 });
     if (out.length < 3) out.push({ kind: 'ink', amount: 6 });
     return out.map(({ w, ...c }) => c);
   }

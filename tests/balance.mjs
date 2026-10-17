@@ -18,17 +18,24 @@ function runOne(botName, seed, meta) {
   const sim = createSim({ seed, mode: 'free', meta, collectEvents: false });
   const bot = bots[botName](seed);
   const s = sim.state;
-  let firstLevelUp = null;
+  let firstLevelUp = null, lateLevelUps = 0, hpAtBoss = null, lateHeal = 0, prevHp = s.hero.hp;
   const maxFrames = MAX_SECONDS / STEP;
   for (let f = 0; f < maxFrames && (s.status === 'playing' || s.status === 'levelup'); f++) {
     if (s.status === 'levelup') {
       if (firstLevelUp === null) firstLevelUp = s.t;
+      if (s.t >= 240 && s.t < 300) lateLevelUps++;
+      const before = s.hero.hp;
       sim.choose(pickChoice(s.choices));
+      if (s.t >= 180 && s.hero.hp > before) lateHeal += s.hero.hp - before;
+      prevHp = s.hero.hp;
       continue;
     }
     sim.step(bot(s));
+    if (s.t >= 180 && s.hero.hp > prevHp) lateHeal += s.hero.hp - prevHp;
+    prevHp = s.hero.hp;
+    if (hpAtBoss === null && s.t >= 300) hpAtBoss = s.hero.hp / s.hero.maxHp;
   }
-  return { time: s.t, clear: s.status === 'clear', level: s.hero.level, kills: s.hero.kills, firstLevelUp, ink: s.hero.ink };
+  return { time: s.t, clear: s.status === 'clear', level: s.hero.level, kills: s.hero.kills, firstLevelUp, ink: s.hero.ink, lateLevelUps, hpAtBoss, lateHeal };
 }
 
 const median = (a) => { const b = [...a].sort((x, y) => x - y); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
@@ -54,6 +61,10 @@ for (const [name, meta] of configs) {
     medianFirstLevelUp: r1(median(rows.map((r) => r.firstLevelUp ?? 999))),
     medianKills: median(rows.map((r) => r.kills)),
     medianInk: median(rows.map((r) => r.ink)),
+    // 体感の指標：最後の1分（4:00〜5:00）のレベルアップ回数、ボスが出たときのHPの残り（届いた人だけ）、3:00以降に回復した量
+    lateLevelUps: median(rows.filter((r) => r.time >= 300).map((r) => r.lateLevelUps).concat([]).length ? rows.filter((r) => r.time >= 300).map((r) => r.lateLevelUps) : [0]),
+    hpAtBossPct: (() => { const v = rows.filter((r) => r.hpAtBoss !== null).map((r) => r.hpAtBoss); return v.length ? Math.round(median(v) * 100) : null; })(),
+    lateHeal: Math.round(median(rows.map((r) => r.lateHeal))),
   };
   console.log(name.padEnd(10), JSON.stringify(results[name]));
 }

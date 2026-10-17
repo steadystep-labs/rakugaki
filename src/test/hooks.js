@@ -4,6 +4,7 @@
 // - window.__test：モード開始・入力・選択などの操作
 
 import { app } from '../state.js';
+import { audioStats, unlockAudio } from '../fx/audio.js';
 
 export function installTestHooks(game) {
   if (!app.test) return;
@@ -30,6 +31,8 @@ export function installTestHooks(game) {
     finish: (status) => { const g = gameScene(); if (g) g.sim.finish(status); },
     setHp: (hp) => { const g = gameScene(); if (g) g.s.hero.hp = hp; },
     save: () => JSON.parse(JSON.stringify(app.save)),
+    audio: () => ({ ...audioStats }),
+    unlockAudio: () => unlockAudio(),
   };
 
   globalThis.advanceTime = (ms) => {

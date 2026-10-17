@@ -95,6 +95,8 @@ try {
   for (let i = 0; i < 25; i++) await page.evaluate((a) => { window.__test.input(Math.cos(a), Math.sin(a)); window.advanceTime(400); const o = JSON.parse(window.render_game_to_text()); if (o.status === 'levelup') window.__test.choose(1); }, i * 0.2);
   s = await state(page);
   check(s.mode === 'daily' && s.anomaly === 'dark', '今日のページ（まっくら）が動く');
+  const leftover = await page.evaluate(() => { const g = window.__gameScene; return !!(g.gapWarn && g.s.t < g.gapWarn.until && g.s.t < 50); });
+  check(!leftover, '前の回の群れの予告（矢印）が残っていない');
   await page.waitForTimeout(200);
   await page.screenshot({ path: join(OUT, '06_daily_dark.png') });
   await page.evaluate(() => window.__test.finish('dead'));

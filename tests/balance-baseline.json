@@ -7,55 +7,76 @@
       "medianLevel": 3,
       "medianFirstLevelUp": 6.3,
       "medianKills": 18.5,
-      "medianInk": 1
+      "medianInk": 1,
+      "lateLevelUps": 0,
+      "hpAtBossPct": null,
+      "lateHeal": 0
     },
     "random": {
-      "medianTime": 44.6,
+      "medianTime": 41.3,
       "clearRate": 0,
-      "medianLevel": 6,
+      "medianLevel": 5,
       "medianFirstLevelUp": 6,
-      "medianKills": 76,
-      "medianInk": 4.5
+      "medianKills": 65,
+      "medianInk": 3,
+      "lateLevelUps": 0,
+      "hpAtBossPct": null,
+      "lateHeal": 0
     },
     "flee": {
-      "medianTime": 339.3,
-      "clearRate": 85,
-      "medianLevel": 23.5,
+      "medianTime": 317.8,
+      "clearRate": 30,
+      "medianLevel": 14.5,
       "medianFirstLevelUp": 4.1,
-      "medianKills": 1003,
-      "medianInk": 91
+      "medianKills": 654,
+      "medianInk": 35,
+      "lateLevelUps": 2,
+      "hpAtBossPct": 39,
+      "lateHeal": 12
     },
     "flee+meta": {
-      "medianTime": 316.2,
-      "clearRate": 100,
-      "medianLevel": 35,
+      "medianTime": 332.9,
+      "clearRate": 95,
+      "medianLevel": 21.5,
       "medianFirstLevelUp": 3.4,
-      "medianKills": 2301.5,
-      "medianInk": 175.5
+      "medianKills": 1960.5,
+      "medianInk": 157,
+      "lateLevelUps": 2,
+      "hpAtBossPct": 80,
+      "lateHeal": 32
     },
     "clumsy": {
-      "medianTime": 272.1,
-      "clearRate": 25,
-      "medianLevel": 19.5,
+      "medianTime": 238.9,
+      "clearRate": 5,
+      "medianLevel": 11.5,
       "medianFirstLevelUp": 5,
-      "medianKills": 734,
-      "medianInk": 29
+      "medianKills": 388,
+      "medianInk": 16.5,
+      "lateLevelUps": 2,
+      "hpAtBossPct": 25,
+      "lateHeal": 0
     },
     "clumsy+mid": {
-      "medianTime": 318.6,
-      "clearRate": 75,
-      "medianLevel": 27,
-      "medianFirstLevelUp": 4.3,
-      "medianKills": 1313.5,
-      "medianInk": 105
+      "medianTime": 277,
+      "clearRate": 10,
+      "medianLevel": 15,
+      "medianFirstLevelUp": 4.2,
+      "medianKills": 698.5,
+      "medianInk": 39.5,
+      "lateLevelUps": 2,
+      "hpAtBossPct": 18,
+      "lateHeal": 18
     },
     "clumsy+meta": {
-      "medianTime": 313.4,
-      "clearRate": 100,
-      "medianLevel": 34.5,
+      "medianTime": 320.6,
+      "clearRate": 60,
+      "medianLevel": 21,
       "medianFirstLevelUp": 3.9,
-      "medianKills": 2171.5,
-      "medianInk": 157.5
+      "medianKills": 1956.5,
+      "medianInk": 128,
+      "lateLevelUps": 2,
+      "hpAtBossPct": 26,
+      "lateHeal": 90
     }
   }
 }

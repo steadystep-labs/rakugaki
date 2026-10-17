@@ -30,8 +30,8 @@ const RULES = [
   [/@import\s+url\(\s*['"]?https?:/i, '外部CSS'],
   [/document\.cookie/, 'Cookie'],
 ];
-// 許可する外部URL（Xの投稿画面を開くリンクだけ）
-const ALLOWED_URLS = ['https://x.com/intent/post'];
+// 許可するURL（Xの投稿画面を開くリンクと、リンクカード用の自分のURL）
+const ALLOWED_URLS = ['https://x.com/intent/post', 'https://steadystep-labs.github.io/rakugaki/'];
 
 const problems = [];
 for (const f of files) {

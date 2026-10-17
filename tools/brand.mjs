@@ -8,7 +8,7 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
 const server = createServer((req, res) => { const p = normalize(join(ROOT, decodeURIComponent(req.url.split('?')[0]))); if (!existsSync(p) || statSync(p).isDirectory()) { res.writeHead(404); res.end(); return; } res.writeHead(200, { 'Content-Type': TYPES[extname(p)] || 'application/octet-stream' }); res.end(readFileSync(p)); });
 await new Promise((r) => server.listen(0, r));
 const browser = await chromium.launch();
-for (const [kind, w, h, out] of [['icon', 800, 800, 'x-icon.png'], ['header', 1500, 500, 'x-header.png']]) {
+for (const [kind, w, h, out] of [['icon', 800, 800, 'x-icon.png'], ['header', 1500, 500, 'x-header.png'], ['og', 1200, 630, 'og.png']]) {
   const page = await (await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: kind === 'icon' ? 0.5 : 1 })).newPage();
   await page.goto(`http://127.0.0.1:${server.address().port}/tools/brand.html?kind=${kind}`);
   await page.waitForFunction(() => window.__brandReady === true, null, { timeout: 15000 });
