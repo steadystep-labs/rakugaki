@@ -2,22 +2,23 @@
 文字列を追加・変更したら必ず実行する：python tools/subset_font.py
 元フォント：Klee One SemiBold（SIL Open Font License 1.1）tools/fonts-src/KleeOne-SemiBold.ttf
 """
-import pathlib, subprocess, sys
+import pathlib, re, subprocess, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / 'tools' / 'fonts-src' / 'KleeOne-SemiBold.ttf'
 OUT = ROOT / 'assets' / 'fonts' / 'rakugaki.woff'
 
+BLOCK_COMMENT = re.compile(r'/\*.*?\*/', re.S)
+LINE_COMMENT = re.compile(r'(^|[^:])//[^\n]*', re.M)
+
 chars = set(chr(c) for c in range(0x20, 0x7f))
 chars |= set('、。・ー「」『』（）！？：…〜●○◆＋－×％／')
-import re
 for p in list((ROOT / 'src').rglob('*.js')) + [ROOT / 'index.html']:
     text = p.read_text(encoding='utf-8')
     if p.suffix == '.js':
-        # コメントの文字は画面に出ないので数えない（フォントが無駄に大きくなるため）。URL内の // は ASCII なので影響しない
-        text = re.sub(r'/\*.*?\*/', '', text, flags=re.S)
-        text = re.sub(r'(^|[^:])//[^
-]*', r'', text)
+        # コメントの文字は画面に出ないので数えない（フォントが無駄に大きくなるため）。URLの // は直前が ':' なので消さない
+        text = BLOCK_COMMENT.sub('', text)
+        text = LINE_COMMENT.sub(r'\1', text)
     for ch in text:
         if ord(ch) > 0x7f:
             chars.add(ch)
