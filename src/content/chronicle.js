@@ -2,7 +2,7 @@
 // by は要望者の表記（XのID、または「くろ」「名もなき絵描き」）。
 // 要望の原文はここに書かない（くろが書き直した文章だけ）。
 
-export const CURRENT_DAY = 0;
+export const CURRENT_DAY = 1;
 
 export const CHRONICLE = [
   {
@@ -14,12 +14,21 @@ export const CHRONICLE = [
     color: 'blue',
     adds: ['えんぴつ', 'じょうぎ', 'コンパス', 'かみひこうき', 'あおいクレヨン'],
   },
+  {
+    day: 1,
+    date: '2026-10-19',
+    title: 'みどりのはんこが押された',
+    text: 'だれの声もとどかない、しずかな日。勇者はノートのすみで、みどりのはんこを見つけた。',
+    by: 'くろ',
+    color: 'green',
+    adds: ['みどりのはんこ'],
+  },
 ];
 
 // 白紙の扉：Xに届いた声（リプ）の数。くろが数えた実数だけを入れる。
 export const VOICES = {
   count: 0,
-  countedAt: '2026-10-13',
+  countedAt: '2026-10-19',
   milestones: [10, 30, 100, 300, 1000],
 };
 

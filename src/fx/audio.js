@@ -87,6 +87,7 @@ function noise(c, out, nb, dur, peak, { type = 'bandpass', freq = 2000, q = 1, t
 const RECIPES = {
   shoot: [0.06, (c, o, n) => noise(c, o, n, 0.035, 0.12, { type: 'highpass', freq: 4200 })],
   swing: [0.2, (c, o, n) => noise(c, o, n, 0.16, 0.22, { freq: 600, to: 2600, q: 2 })],
+  stamp: [0.18, (c, o, n) => { tone(c, o, 'sine', 140, 0.14, 0.24, { to: 60 }); noise(c, o, n, 0.05, 0.12, { freq: 700, q: 0.8 }); }],
   hit: [0.1, (c, o, n) => { tone(c, o, 'sine', 170, 0.07, 0.18, { to: 70 }); noise(c, o, n, 0.04, 0.08, { freq: 900 }); }],
   kill0: [0.14, (c, o, n) => { noise(c, o, n, 0.09, 0.22, { freq: 1300, q: 0.7 }); noise(c, o, n, 0.06, 0.1, { freq: 3200, at: 0.03, offset: 0.2 }); }],
   kill1: [0.14, (c, o, n) => { noise(c, o, n, 0.09, 0.22, { freq: 1600, q: 0.7, offset: 0.1 }); noise(c, o, n, 0.06, 0.1, { freq: 2800, at: 0.03, offset: 0.3 }); }],
@@ -144,6 +145,7 @@ const vary = (amt = 0.06) => 1 + (Math.random() * 2 - 1) * amt;
 export const sfx = {
   shoot() { play('shoot', { gap: 110, rate: vary(0.08), low: true }); },
   swing() { play('swing', { gap: 120, rate: vary() }); },
+  stamp() { play('stamp', { gap: 200, rate: vary() }); },
   hit() { play('hit', { gap: 90, rate: vary(), low: true }); },
   kill() { play(`kill${Math.floor(Math.random() * 3)}`, { gap: 75, rate: vary(0.1), low: true }); },
   pickup(combo = 0) { play('pickup', { gap: 60, rate: Math.pow(2, Math.min(combo, 14) / 12), low: true }); },

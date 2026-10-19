@@ -469,6 +469,17 @@ export function createSim({ seed = 1, mode = 'free', anomaly = null, meta = {}, 
         }
         emit('swing', { weapon: w.id });
         w.cd = cooldown;
+      } else if (def.kind === 'pulse') {
+        // 近くに敵がいるときだけ押す（まわり全部をはじき飛ばす）
+        if (!nearestEnemy(h.x, h.y, st.radius)) { w.cd = 0.1; continue; }
+        s.swings.push({ ring: true, x: h.x, y: h.y, reach: st.radius, life: 0.35, maxLife: 0.35 });
+        queryEnemies(h.x, h.y, st.radius, (e) => {
+          const d = Math.hypot(e.x - h.x, e.y - h.y) || 1;
+          const kb = e.type === 'boss' ? st.knockback * 0.15 : st.knockback;
+          damageEnemy(e, st.damage, ((e.x - h.x) / d) * kb, ((e.y - h.y) / d) * kb);
+        });
+        emit('stamp', { weapon: w.id, x: h.x, y: h.y });
+        w.cd = cooldown;
       } else if (def.kind === 'homing') {
         const target = aimTarget(h.x, h.y, 700);
         if (!target) { w.cd = 0.1; continue; }

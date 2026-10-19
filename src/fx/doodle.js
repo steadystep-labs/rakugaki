@@ -196,6 +196,16 @@ const DRAWERS = {
     g.lineStyle(3, INK, 1); drawPoly(g, pts); g.strokePath();
     for (let i = 0; i < 7; i++) jitterLine(g, rng, c - 18 + i * 6, c - 7, c - 18 + i * 6, c - (i % 2 ? 2 : 0), 0.3, 1);
   },
+  stampIcon(g, rng, s) {
+    const c = s / 2;
+    // 持ち手＋みどりの印
+    blob(g, rng, c, c - 12, 9, 11, PALETTE.white, INK, 3, 0.06, 12);
+    const pts = [{ x: c - 18, y: c }, { x: c + 18, y: c + rng.range(-1, 1) }, { x: c + 18, y: c + 10 }, { x: c - 18, y: c + 10 + rng.range(-1, 1) }];
+    g.fillStyle(COLORS.green.hex, 1); drawPoly(g, pts); g.fillPath();
+    g.lineStyle(3, INK, 1); drawPoly(g, pts); g.strokePath();
+    g.lineStyle(3, COLORS.green.hex, 1);
+    drawPoly(g, blobPoints(rng, c, c + 20, 14, 4, 12, 0.08)); g.strokePath();
+  },
   star(g, rng, s) {
     const c = s / 2;
     const pts = [];
@@ -234,7 +244,7 @@ const DRAWERS = {
 const SIZES = {
   hero: 96, crumb: 60, runner: 72, lump: 100, spitter: 60, boss: 200, pencilShot: 32, plane: 40, needle: 36,
   enemyShot: 32, xp: 28, ink: 32, scrap: 14, splash: 20, crayon: 28, smudge: 100, joyRing: 160, joyKnob: 64,
-  rulerIcon: 56, star: 48, heart: 48,
+  rulerIcon: 56, stampIcon: 56, star: 48, heart: 48,
 };
 
 // 1つの絵を、渡した Graphics にそのまま描く（拡大してもぼやけない。宣伝画像づくり用）

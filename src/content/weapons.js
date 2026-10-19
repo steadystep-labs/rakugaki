@@ -90,6 +90,21 @@ export const WEAPONS = {
     }),
     levelText: ['', '線が長持ち', 'いりょく+', 'もっとおそくする', '太い線'],
   },
+  stampGreen: {
+    name: 'みどりのはんこ',
+    desc: '足もとにポン！まわりの敵をはじき飛ばす',
+    color: 'green',
+    kind: 'pulse',
+    addedDay: 1,
+    by: 'くろ',
+    stats: (lv) => ({
+      cooldown: [3.4, 3.2, 3.0, 2.8, 2.4][lv - 1],
+      damage: [10, 12, 15, 18, 22][lv - 1],
+      radius: [140, 150, 165, 180, 200][lv - 1],
+      knockback: [380, 400, 420, 440, 480][lv - 1],
+    }),
+    levelText: ['', 'いりょく+', 'ひろく押す', 'いりょく+', 'もっとひろく・はやく'],
+  },
 };
 
 export const WEAPON_MAX_LEVEL = 5;

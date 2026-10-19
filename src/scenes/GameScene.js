@@ -12,7 +12,7 @@ import { wobblyRect, ATLAS } from '../fx/doodle.js';
 import { label, button, fadeTo, pin, W, H } from '../ui/ui.js';
 
 const DAY_COLOR = COLORS.blue.hex;
-const ICONS = { pencil: 'pencilShot', ruler: 'rulerIcon', compass: 'needle', plane: 'plane', crayonBlue: 'crayon' };
+const ICONS = { pencil: 'pencilShot', ruler: 'rulerIcon', compass: 'needle', plane: 'plane', crayonBlue: 'crayon', stampGreen: 'stampIcon' };
 const BOIL_MS = 125;
 const VIS = 1.15; // 見た目の拡大率（スマホで小さすぎないように）
 
@@ -322,6 +322,15 @@ export class GameScene extends Phaser.Scene {
     }
     for (const sw of s.swings) {
       const a = sw.life / sw.maxLife;
+      if (sw.ring) {
+        // はんこ：押した所から広がるみどりの輪
+        const r = sw.reach * (0.55 + (1 - a) * 0.45);
+        sg.lineStyle(12, COLORS.green.hex, a * 0.8);
+        sg.strokeCircle(sw.x, sw.y, r);
+        sg.lineStyle(4, COLORS.green.hex, a * 0.5);
+        sg.strokeCircle(sw.x, sw.y, r * 0.7);
+        continue;
+      }
       sg.lineStyle(14, PALETTE.ink, a * 0.85);
       sg.beginPath(); sg.arc(sw.x, sw.y, sw.reach * 0.78, sw.dir - sw.arc / 2, sw.dir + sw.arc / 2); sg.strokePath();
       sg.lineStyle(4, PALETTE.ink, a * 0.5);
@@ -359,6 +368,7 @@ export class GameScene extends Phaser.Scene {
       switch (ev.type) {
         case 'shoot': sfx.shoot(); break;
         case 'swing': sfx.swing(); break;
+        case 'stamp': sfx.stamp(); this.shake(60, 0.002); break;
         case 'hit':
           if (hitCount++ < 6) { sfx.hit(); this.burst(ev.x, ev.y, 'splash', 2, { tint: DAY_COLOR, speed: 120, life: 260, scale: 0.6 }); }
           break;
